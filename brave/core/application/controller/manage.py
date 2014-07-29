@@ -66,7 +66,7 @@ class ApplicationInterface(HTTPMethod):
                             short = app.short,
                             perms=perms,
                             expire = app.expireGrantDays,
-                            encrypt = app.exempt_encryption,
+                            exempt = app.ecdsa_exempt,
                             ip = app.exempt_address
                         )
                 )
@@ -105,7 +105,7 @@ class ApplicationInterface(HTTPMethod):
         
         if user.admin:
             app.expireGrantDays = valid['expire'] or 30
-            app.exempt_encryption = valid['encrypt'] or False
+            app.ecdsa_exempt = valid['exempt'] or False
             app.exempt_address = valid['ip'] or None
         
         if not createPerms(valid['perms'], app.short):
@@ -191,7 +191,7 @@ class ApplicationList(HTTPMethod):
         
         if user.admin:
             app.expireGrantDays = valid['expire'] or 30
-            app.exempt_encryption = valid['encrypt'] or False
+            app.ecdsa_exempt = valid['exempt'] or False
             app.exempt_address = valid['ip'] or None
         
         if not createPerms(valid['perms'], app.short):

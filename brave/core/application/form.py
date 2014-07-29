@@ -39,7 +39,7 @@ def manage_form(action='/application/manage/'):
     if user.admin:
         form.children.append(Tab('admin', L_("Admin"), children=[
                     NumberField('expire', L_("Grant Duration (Days)"), placeholder=30, class_="input-small"),
-                    CheckboxField('encrypt', L_("Encryption Exempt"), title="", class_='input-block-level'),
+                    CheckboxField('exempt', L_("ECDSA Signing Exempt"), title="", class_='input-block-level'),
                     TextField('ip', L_("Server IP Address"), class_="input-block-level"),
                 ])
             )

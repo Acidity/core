@@ -60,7 +60,7 @@ class Application(Document):
     mask = EmbeddedDocumentField(ApplicationMasks, db_field='m', default=lambda: ApplicationMasks())
     groups = ListField(StringField(), db_field='g', default=list)
     development = BooleanField(db_field='dev')
-    exempt_encryption = BooleanField(db_field='r', default=False)
+    ecdsa_exempt = BooleanField(db_field='r', default=False)
     exempt_address = StringField(db_field='i')
     # Number of days that grants for this application should last.
     expireGrantDays = IntField(db_field='e', default=30)
