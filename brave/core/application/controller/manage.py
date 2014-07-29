@@ -65,7 +65,9 @@ class ApplicationInterface(HTTPMethod):
                             groups = app.groups,
                             short = app.short,
                             perms=perms,
-                            expire = app.expireGrantDays
+                            expire = app.expireGrantDays,
+                            encrypt = app.exempt_encryption,
+                            ip = app.exempt_address
                         )
                 )
         
@@ -103,6 +105,8 @@ class ApplicationInterface(HTTPMethod):
         
         if user.admin:
             app.expireGrantDays = valid['expire'] or 30
+            app.exempt_encryption = valid['encrypt'] or False
+            app.exempt_address = valid['ip'] or None
         
         if not createPerms(valid['perms'], app.short):
             return 'json:', dict(
@@ -184,6 +188,11 @@ class ApplicationList(HTTPMethod):
             app.development = False
 
         app.short = valid['short'] or app.name.replace(" ", "").lower()
+        
+        if user.admin:
+            app.expireGrantDays = valid['expire'] or 30
+            app.exempt_encryption = valid['encrypt'] or False
+            app.exempt_address = valid['ip'] or None
         
         if not createPerms(valid['perms'], app.short):
             return 'json:', dict(
