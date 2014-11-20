@@ -182,22 +182,61 @@ class CoreAPI(SignedController):
         from brave.core.application.model import ApplicationGrant
         from brave.core.group.model import Group
         
-        # Step 1: Get the appropraite grant.
+        # Step 1: Get the appropriate grant.
         token = ApplicationGrant.objects.get(id=token, application=request.service)
-        character = token.character
-        
-        # Step 2: Match ACLs.
+
+        # Step 2: Assemble the information for each character
+        characters_info = []
+        character = token.default_character
         tags = []
-        for group in Group.objects(id__in=request.service.groups):
-            if group.evaluate(token.user, character):
-                tags.append(group.id)
         
+        for char in token.characters:
+            # Ensure that this character still belongs to this user
+            if char.owner != token.user:
+                token.remove_character(char)
+                try:
+                    token.reload()
+                except ApplicationGrant.DoesNotExist:
+                    break
+
+            # Fill in the character info
+            character_info = {
+                'character': {
+                    'id': char.identifier,
+                    'name': char.name,
+                },
+                'corporation': {
+                    'id': char.corporation.identifier,
+                    'name': char.corporation.name,
+                },
+                'primary': token.user.primary == char,
+            }
+            if char.alliance:
+                character_info['alliance'] = {
+                    'id': char.alliance.identifier,
+                    'name': char.alliance.name,
+                }
+
+            # Step 2.5: Match ACLs.
+            char_tags = []
+            for group in Group.objects(id__in=request.service.groups):
+                if group.evaluate(token.user, char):
+                    char_tags.append(group.id)
+                    if char == token.default_character:
+                        tags.append(group.id)
+            character_info['tags'] = char_tags
+            character_info['perms'] = char.permissions_tags(token.application)
+
+            characters_info.append(character_info)
+            
         return dict(
-                character = dict(id=character.identifier, name=character.name),
-                corporation = dict(id=character.corporation.identifier, name=character.corporation.name),
-                alliance = dict(id=character.alliance.identifier, name=character.alliance.name) if character.alliance else None,
-                tags = tags,
-                perms = character.permissions_tags(token.application),
-                expires = None,
-                mask = token.mask.mask if token.mask else 0
-            )
+            character = dict(id=character.identifier, name=character.name),
+            corporation = dict(id=character.corporation.identifier, name=character.corporation.name),
+            alliance = dict(id=character.alliance.identifier, name=character.alliance.name) if character.alliance else None,
+            characters = characters_info,
+            tags = tags,
+            perms = character.permissions_tags(token.application),
+            expires = None,
+            mask = token.mask
+        )
+            
