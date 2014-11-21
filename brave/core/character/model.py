@@ -89,7 +89,7 @@ class EVEAlliance(EVEEntity):
             
             if created: a += 1
             
-            record.name = row.name
+            record.name = str(row.name)
             record.short = str(row.shortName)
             record.founded = datetime.strptime(row.startDate, "%Y-%m-%d %H:%M:%S")
             members = row.memberCount
