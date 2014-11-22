@@ -193,9 +193,12 @@ class BanSearch(HTTPMethod):
         if secret_reason and not user.has_permission(getattr(Ban, "MODIFY_SECRET_REASON_" + ban_type.upper() + "_PERM")):
             return 'json:', dict(success=False, message="No secret reasons for you!")
 
-        char = EVECharacter.objects(name__iexact=char).first()
-        if not char:
-            return 'json:', dict(success=False, message="Character provided was not found.")
+        try:
+            char = EVECharacter.objects.get(name__iexact=char)
+        except EVECharacter.DoesNotExist:
+            char = EVECharacter.pull_character(char)
+            if not char:
+                return 'json:', dict(success=False, message="Character provided was not found.")
 
         for u in char.person._users:
             if u.has_permission(Ban.UNBANNABLE_PERM):
