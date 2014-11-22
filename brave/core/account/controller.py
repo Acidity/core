@@ -12,6 +12,7 @@ from brave.core.account.model import User, PasswordRecovery
 from brave.core.account.form import authenticate as authenticate_form, register as register_form, \
     recover as recover_form, reset_password as reset_password_form
 from brave.core.account.authentication import lookup_email, send_recover_email
+from brave.core.person.model import Person
 from brave.core.util.predicate import is_administrator, authenticate
 
 from yubico import yubico
@@ -69,6 +70,12 @@ class Authenticate(HTTPMethod):
                 return 'json:', dict(success=False, message=_("Invalid user name or password."))
 
             return self.get(redirect)
+
+        # User is global banned.
+        if user.person.banned():
+            temp = user.id
+            deauthenticate()
+            return 'json:', dict(success=True, location='/account/banned?user=' + str(temp))
 
         if request.is_xhr:
             return 'json:', dict(success=True, location=redirect or '/')
@@ -433,6 +440,21 @@ class AccountController(Controller):
     register = Register()
     settings = Settings()
     recover = Recover()
+
+    def banned(self, user):
+        bans = []
+
+        user = User.objects(id=user).first()
+        # We only show enabled bans in the search window to users without permission
+        for b in user.person.bans:
+            if b.enabled:
+                bans.append(b)
+                continue
+
+        return 'brave.core.account.template.banned', dict(
+                success = True,
+                results=bans,
+            )
     
     def exists(self, **query):
         query.pop('ts', None)

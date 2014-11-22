@@ -29,12 +29,12 @@ log = __import__('logging').getLogger(__name__)
 
 def lookup(identifier):
     """Thaw current user data based on session-stored user ID."""
-    
+
     user = User.objects(id=identifier).first()
     
     if user:
         user.update(set__seen=datetime.utcnow())  # , set__host=request.remote_addr -- chicken-egg problem
-    
+
     return user
 
 
@@ -117,11 +117,7 @@ def authenticate(identifier, password):
     # Update the user's host
     user.host = request.remote_addr
     
-    # Check for other accounts with this IP address
-    if len(User.objects(host=request.remote_addr)) > 1:
-        # Quite possibly the worst code ever
-        for u in User.objects(host=request.remote_addr):
-                User.add_duplicate(user, u, IP=True)
+    user.person.add_component((user, "user_add"), request.remote_addr)
 
     user.save()
     
