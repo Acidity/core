@@ -7,6 +7,7 @@ from mongoengine import Document, EmbeddedDocument, EmbeddedDocumentField, Strin
 
 from brave.core.util.signal import update_modified_timestamp
 from brave.core.application.signal import trigger_private_key_generation
+import random
 
 
 log = __import__('logging').getLogger(__name__)
@@ -64,6 +65,18 @@ class Application(Document):
     
     # This field indicates whether the application requires access to every character on the authorizing user's account.
     require_all_chars = BooleanField(db_field='a', default=False)
+
+    auth_type = StringField(choices=["legacy", "oauth"], default="legacy", required=True)
+
+    # OAuth stuff
+    oauth_client_secret = StringField(min_length=128, max_length=128, db_field='os')
+    """ The redirection endpoint SHOULD require the use of TLS... when the requested response type is "code" or "token"
+        - RFC 6749 Section 3.1.2.1
+    We're going to enforce it server side anyways."""
+    oauth_redirect_uri = URLField(db_field='ru', regex="^https://")
+    # NOTE: We only support confidential clients at the moment.
+    # TODO: Add support for OAuth public clients
+    oauth_client_type = StringField(choices=["confidential", "public"], default="confidential", db_field='oc')
     
     owner = ReferenceField('User', db_field='o')
     
@@ -119,7 +132,7 @@ class ApplicationGrant(Document):
     
     immutable = BooleanField(db_field='i', default=False)  # Onboarding is excempt from removal by the user.
     expires = DateTimeField(db_field='x')  # Default grant is 30 days, some applications exempt.  (Onboarding, Jabber, TeamSpeak, etc.)
-    
+
     # Python Magic Methods
     
     @property

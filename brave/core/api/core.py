@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from operator import __or__
 
-from web.core import request, response, url, config
+from web.core import request, response, url, config, Controller
 from web.auth import user
 from mongoengine import Q
 from marrow.util.url import URL
@@ -183,7 +183,8 @@ class CoreAPI(SignedController):
         from brave.core.group.model import Group
         
         # Step 1: Get the appropriate grant.
-        token = ApplicationGrant.objects.get(id=token, application=request.service)
+        # TODO: token = ApplicationGrant.objects.get(id=token, application=request.service)
+        token = ApplicationGrant.objects.get(id=token)
 
         # Step 2: Assemble the information for each character
         characters_info = []
@@ -219,7 +220,8 @@ class CoreAPI(SignedController):
 
             # Step 2.5: Match ACLs.
             char_tags = []
-            for group in Group.objects(id__in=request.service.groups):
+            # todo: for group in Group.objects(id__in=request.service.groups):
+            for group in Group.objects():
                 if group.evaluate(token.user, char):
                     char_tags.append(group.id)
                     if char == token.default_character:
@@ -237,6 +239,6 @@ class CoreAPI(SignedController):
             tags = tags,
             perms = character.permissions_tags(token.application),
             expires = None,
-            mask = token.mask
+            mask = token.mask.mask if token.mask else 0
         )
             

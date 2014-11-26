@@ -25,9 +25,12 @@ class ProxyAPI(SignedController):
         from brave.core.application.model import ApplicationGrant
         
         anonymous = None if anonymous is None else boolean(anonymous)
-        
+        if token:
+            service = ApplicationGrant.objects.get(id=token).application
+        else:
+            service = Application.objects(short='hr').first()
         log.info("service={0!r} group={1} endpoint={2} token={3} anonymous={4} data={5}".format(
-                request.service, group, endpoint, token, anonymous, kw
+                service, group, endpoint, token, anonymous, kw
             ))
         
         # Prevent access to certain overly-broad API calls.
@@ -35,23 +38,26 @@ class ProxyAPI(SignedController):
             return dict(success=False, reason='endpoint.restricted', message="Access restricted to endpoint: {0}.{1}".format(group, endpoint))
         
         try:  # Get the appropriate grant.
-            token = ApplicationGrant.objects.get(id=token, application=request.service) if token else None
+            token = ApplicationGrant.objects.get(id=token, application=service) if token else None
         except ApplicationGrant.DoesNotExist:
             return dict(success=False, reason='grant.invalid', message="Application grant invalid or expired.")
-        
+        print token
         try:  # Load the API endpoint.
             call = getattr(getattr(api, group, None), endpoint)
         except AttributeError:
             return dict(success=False, reason='endpoint.invalid', message="Unknown API endpoint: {0}.{1}".format(group, endpoint))
         
         key = None
-        if anonymous is False or token or call.mask:
+        #print token
+        #print call.mask
+        #print anonymous
+        if anonymous is False or token or (call.mask and call.mask.mask):
             # Check that this grant allows calls to this API endpoint.
-            if call.mask and (not token or not token.mask.has_access(call.mask)):
+            if call.mask and call.mask.mask and (not token or not token.mask.has_access(call.mask)):
                 return dict(success=False, reason='grant.unauthorized', message="Not authorized to call endpoint: {0}.{1}".format(group, endpoint))
             
             # Find an appropriate key to use for this request if one is required or anonymous=False.
-            key = token.character.credential_for(call.mask)
+            key = token.characters[0].credential_for(call.mask)
             if not key:
                 return dict(success=False, reason='key.notfound', message="Could not find EVE API key that authorizes endpoint: {0}.{1}".format(group, endpoint))
         

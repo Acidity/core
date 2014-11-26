@@ -306,7 +306,7 @@ class EVECharacter(EVEEntity):
     def credential_for(self, mask):
         """Return the least-permissive API key that can satisfy the given mask."""
         
-        candidates = [i for i in self.credentials if not mask or not i.mask or i.mask.has_access(mask)]
+        candidates = [i for i in self.credentials if not mask or not i.mask or not i.mask or i.mask.has_access(mask)]
         
         lowest = None
         lowest_count = None
