@@ -1,0 +1,217 @@
+## encoding: utf-8
+
+<%inherit file="brave.core.template.light"/>
+
+<%block name="title">${_("Authorize {0}").format(application.name) | h}</%block>
+
+<%block name="header">
+    ${parent.header()}
+
+    <style>
+        input[type=submit] { float: right; border: 0 none; height: 0; width: 0; padding: 0; margin: 0; overflow: hidden; }
+        .content-wrap.authentication { position: relative; }
+        .overlay { position: absolute; top: 15px; left: 0; right: 0; text-align: center; display: none; }
+        .overlay.result { text-shadow: 0 1px 4px rgba(0,0,0,0.75); }
+        .overlay.fail, .overlay.bad { color: #b00; }
+        .overlay.success { color: #0b0; }
+        
+        blockquote { background: white; border-width: 0; color: black; padding: 10px; border-radius: 5px; font-size: 16pt; line-height: 1.4em; box-shadow: inset 0px 1px 2px rgba(0,0,0,0.5); }
+        p, ul { text-align: left; }
+        li { line-height: 1.2em; }
+        
+        .login-wrapper .box { width: 500px; }
+        .login-wrapper .box .content-wrap { width: 440px; }
+
+        #character-select button { width: 100%; text-align: left; }
+        #character-select input[type=checkbox] { vertical-align: baseline; }
+        #character-select img {
+            vertical-align: -60%;
+            margin-right: 5px;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+        }
+    </style>
+</%block>
+
+<%block name="post">
+    ${parent.post()}
+
+    <script type="text/javascript" charset="utf-8">
+        $(function(){
+            function process(){
+                // Fade to the progress spinner.
+                $('.auth').animate({opacity: 0.25}, 250);
+                $('.btn').addClass('disabled').attr('disabled', true);
+                $('#alerts').empty();
+                $('.overlay.wait').fadeIn(250);
+
+                // Submit XHR request.
+                var chars = $('button.active').map(function (i, val){ return $(val).data('id');}).get();
+                var all_chars = chars.indexOf('all');
+                chars[all_chars] = null;
+                all_chars = all_chars > -1;
+                var data = {grant: true, 'characters': chars, 'all_chars': all_chars};
+                var receipt = $.post(window.location, data);
+                receipt.fail(function(jqXHR, textStatus, errorThrown){
+                    // Something went wrong.
+                    console.log(jqXHR, textStatus, errorThrown);
+                    $('.overlay.wait').fadeOut(125, function(){
+                    $('.overlay.bad').fadeIn(250, function(){
+                        $('.overlay.bad').fadeOut(250);
+                        $('.auth').animate({opacity: 1}, 250);
+                        $('.btn').removeClass('disabled').attr('disabled', false);
+                    });
+                    });
+                }).done(function(data, textStatus, jqXHR){
+                    // Determine if we were successful or not and fade the appropriate icon.
+                    $('.overlay.wait').fadeOut(125, function(){
+                        if ( data.success ) {
+                            $('.overlay.success').fadeIn(250, function(){ window.location = data.location; });
+                        } else {
+                            $('.overlay.fail').fadeIn(250, function(){
+                                $('.overlay.fail').fadeOut(250);
+                                $('.auth').animate({opacity: 1}, 250);
+                                $('.btn').removeClass('disabled').attr('disabled', false);
+                            });
+                        }
+                    });
+                });
+
+                return false;
+            }
+
+            $('#character-select button').click(function() {
+                var old_state = $(this).hasClass("active");
+                if (${1 if only_one_char else 0}) {
+                    if (!old_state){
+                        $(this).siblings().toggleClass('btn-info', false);
+                        $(this).siblings().toggleClass('active', false);
+                        $(this).toggleClass('btn-info', true);
+                        $(this).find('input[type=radio]').prop('checked', true);
+                    }
+                } else {
+                    $(this).toggleClass('btn-info', !old_state);
+                    $(this).find('input[type=checkbox]').prop('checked', !old_state);
+                }
+            });
+
+            $('#character-select').on('show.bs.collapsible', function() {
+                $(this).siblings('.btn-group').hide();
+                $(this).siblings('#authorize-button-2').show();
+            });
+
+            $('.allow').click(process);
+            
+            // Utility to size text to available space.
+            // I'd love to use the TeX algorithm for this to add intra-character spacing as a variable.
+            
+            $('<div />', {id: 'hidden-resizer', style: 'font-size: 24px'}).hide().appendTo(document.body);
+            
+            var size;
+            var resizer = $("#hidden-resizer");
+            var target = $('blockquote');
+            var desired_width = target.width() - 20;
+            
+            resizer.html(target.data('application'));
+            
+            for ( var i = 36; i > 12; i-- ) {
+                resizer.css("font-size", i + 'px');
+                if ( resizer.width() < desired_width ) break;
+            }
+            
+            target.css("font-size", i + 'px').html(resizer.html());
+            
+            // End Utility
+        });
+    </script>
+</%block>
+
+% if not success:
+<div class="box">
+    <div class="content-wrap authentication clearfix">
+        <div class="auth">
+            <h6>${_("Error")}</h6>
+            
+            <p><center>${message}</center></p>
+        </div>
+    </div>
+</div>
+
+% else:
+
+<div class="box">
+    <div class="content-wrap authentication clearfix">
+        <div class="auth">
+            <h6>${_("Granting Authorization")}</h6>
+            
+            <blockquote data-application="${
+            application.name | h}"></blockquote>
+            
+            <p>This application wishes to know certain information about your character.  All applications are given access to the following information:</p>
+            
+            <ul>
+                <li><strong>Public Character Information</strong><span class="pull-right">Name, Corporation, Alliance</span></li>
+            </ul>
+            
+            % if application.mask.required:
+            <p>Additionally, this application requires the following additional information:</p>
+            
+            <ul>
+                <%
+                 from brave.core.util.eve import EVECharacterKeyMask
+                 k = EVECharacterKeyMask(application.mask.required)
+                %>
+                % for func in k.functionsAllowed():
+                    <li>${func.name[5:]}</li>
+                % endfor
+            </ul>
+            % endif
+            
+            <!-- TODO: all-characters-required -->
+            <div style="text-align: right; margin-top: 30px;">
+                <div id="character-select" data-toggle="buttons-checkbox" ${'class="collapse"' if default != 'all' else ''}>
+                    % if not only_one_char:
+                        <button
+                            class="btn ${'active btn-info' if 'all' == default else ''}"
+                            ${'disabled' if 'all' == default else ''}
+                            data-id="all"
+                            data-toggle="collapse"
+                            data-target="#character-toggles"
+                            >
+                            <input type="checkbox" data-id="all" ${'checked' if 'all' == default else ''} />
+                            <strong>All Characters</strong>
+                        </button>
+                    % endif
+                    <div id="character-toggles" class="${'collapse.in in' if default != 'all' else ''} collapse">
+                        % for record in characters:
+                            <button class="btn ${'active btn-info' if record == default else ''}" data-id="${record.id}">
+                                <input type="${'radio' if only_one_char else 'checkbox'}" name="char" data-id="${record.id}" ${'checked' if record == default else ''} />
+                                <img src="//image.eveonline.com/Character/${record.identifier}_32.jpg" />
+                                <strong>${record.name | h}</strong>
+                                % if record == default:
+                                <span class="label label-inverse" style="margin-left: 5px;">Default</span>
+                                % endif
+                            </button>
+                        % endfor
+                    </div>
+                </div>
+                % if default != 'all':
+                <div class="btn-group">
+                    <a class="btn btn-success btn-large allow" style="padding-left: 50px;" href="#" data-id="${default.id}"><img src="//image.eveonline.com/Character/${default.identifier}_32.jpg" style="border-radius: 4px; position: absolute; left: 4px; top: 4px; border: 1px inset rgba(127,127,127,0.5); width: 32px; height: 32px;"> Authorize</a>
+                    <a class="btn btn-success btn-large dropdown-toggle" data-toggle="collapse" data-target="#character-select"><i class="fa fa-caret-up"></i></a>
+                </div>
+                % endif
+                <a id="authorize-button-2" class="btn btn-success btn-large allow" href="#" ${'style="display: none"' if default != 'all' else ''}>Authorize</a>
+                <a class="btn btn-inverse pull-left" style="margin-top: 15px;">Deny Authorization</a>
+            </div>
+        </div>
+
+        <div class="overlay fa-4x wait"><i class="fa fa-spinner fa-spin fa-4x"></i></div>
+        <div class="overlay fa-4x result fail"><i class="fa fa-times fa-4x"></i></div>
+        <div class="overlay fa-4x result success"><i class="fa fa-check fa-4x"></i></div>
+        <div class="overlay fa-4x result bad"><i class="fa fa-exclamation-triangle fa-4x"></i></div>
+    </div>
+</div>
+
+% endif

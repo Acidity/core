@@ -9,6 +9,7 @@ from brave.core.api.util import SignedController
 from brave.core.api.core import CoreAPI
 from brave.core.api.eve import ProxyAPI
 from brave.core.api.lookup import LookupAPI
+from brave.core.api.oauth import OAuth
 
 
 log = __import__('logging').getLogger(__name__)
@@ -18,6 +19,7 @@ class ApiController(SignedController):
     core = CoreAPI()
     proxy = ProxyAPI()
     lookup = LookupAPI()
+    oauth = OAuth()
     
     def ping(self, now=None):
         import calendar
