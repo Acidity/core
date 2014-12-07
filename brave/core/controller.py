@@ -18,6 +18,7 @@ from brave.core import util
 from brave.core.util.signal import StartupMixIn
 from brave.core.util.predicate import authorize, authenticate
 from brave.core.api.model import AuthenticationRequest
+from brave.core.character.model import EVECharacter
 
 
 log = __import__('logging').getLogger(__name__)
@@ -31,6 +32,8 @@ class DeveloperTools(Controller):
     def test(self):
         """Return an HTML/templating scratch pad."""
         return 'brave.core.template.test', dict(data=None)
+
+
 
 
 class AuthorizeHandler(HTTPMethod):

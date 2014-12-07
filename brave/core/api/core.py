@@ -209,7 +209,7 @@ class CoreAPI(SignedController):
                 tags = tags,
                 perms = char.permissions_tags(token.application),
                 expires = None,
-                mask = token.mask,
+                mask = token._mask,
             )
 
         characters_info = filter(None, map(char_info, token.characters))

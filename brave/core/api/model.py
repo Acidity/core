@@ -90,7 +90,7 @@ class OAuthValidator(RequestValidator):
             return False
 
         request.client = client
-        return True
+        return client
 
     @staticmethod
     def verify_http_attributes(request):
@@ -103,7 +103,7 @@ class OAuthValidator(RequestValidator):
             return False
 
         request.client = client
-        return True
+        return client
 
 
     @staticmethod
@@ -132,9 +132,11 @@ class OAuthValidator(RequestValidator):
     def authenticate_client(request, *args, **kwargs):
         # HTTPBasic Authentication
         if 'Authorization' in request.headers:
+            log.debug("HTTPAuthorization Header Detected.")
             return OAuthValidator.verify_http_basic(request)
         # GET or POST attributes
         if hasattr(request, 'client_id') and hasattr(request, 'client_secret'):
+            log.debug("Client Credentials in args detected.")
             return OAuthValidator.verify_http_attributes(request)
 
         return False
@@ -227,7 +229,8 @@ class OAuthValidator(RequestValidator):
         chars = [EVECharacter.objects.get(name=c.replace("&", " ")) for c in (request.scopes if not all_chars else [q.name for q in request.user.characters])]
 
         grant = ApplicationGrant(user=request.user, _mask=request.client.mask.required, application=request.client,
-                                 expires=datetime.utcnow()+timedelta(hours=1), oauth_access_token=token['access_token'],
+                                 expires=datetime.utcnow()+timedelta(days=request.client.expireGrantDays),
+                                 oauth_access_token=token['access_token'],
                                  oauth_refresh_token=token['refresh_token'] if 'refresh_token' in token else None,
                                  chars=chars, all_chars=all_chars)
         grant.save()
